@@ -3,7 +3,12 @@
 Multi-tenant booking & CRM platform for small service businesses: barbershops, beauty salons, tutors, clinics.
 Each business (tenant) manages its staff and services; clients book time slots online.
 
-> Status: **Stage 1 — core domain.** See [ROADMAP](docs/ROADMAP.md).
+**Live demo:** https://slotly-minx.onrender.com/swagger-ui.html — sign up via `POST /api/v1/auth/register`, then press **Authorize**.
+(Free instance: the first request after a quiet period can take up to a minute while it wakes up.)
+
+[![CI](https://github.com/oldsoska/slotly/actions/workflows/ci.yml/badge.svg)](https://github.com/oldsoska/slotly/actions/workflows/ci.yml)
+
+> Status: **Stage 2 — deployed MVP.** See [ROADMAP](docs/ROADMAP.md).
 
 ## Highlights
 
