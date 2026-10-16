@@ -12,8 +12,10 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 public class BookingService {
@@ -22,13 +24,15 @@ public class BookingService {
     private final ServiceOfferingRepository services;
     private final BookingRepository bookings;
     private final ScheduleService schedule;
+    private final Clock clock;
 
     public BookingService(StaffRepository staff, ServiceOfferingRepository services,
-                          BookingRepository bookings, ScheduleService schedule) {
+                          BookingRepository bookings, ScheduleService schedule, Clock clock) {
         this.staff = staff;
         this.services = services;
         this.bookings = bookings;
         this.schedule = schedule;
+        this.clock = clock;
     }
 
     /**
@@ -75,5 +79,20 @@ public class BookingService {
             throw new ConflictException(e.getMessage());
         }
         return booking;
+    }
+
+    @Transactional(readOnly = true)
+    public Booking byCancelToken(UUID token) {
+        return bookings.findByCancelToken(token).orElseThrow(() -> new NotFoundException("Booking", token));
+    }
+
+    /** Cancellation by the client; unlike staff, a client cannot cancel once the visit has started. */
+    @Transactional
+    public Booking cancelByToken(UUID token) {
+        Booking booking = byCancelToken(token);
+        if (booking.getStatus() == BookingStatus.CONFIRMED && !booking.getStartsAt().isAfter(clock.instant())) {
+            throw new ConflictException("A booking cannot be cancelled after it has started");
+        }
+        return cancel(booking.getTenantId(), booking.getId());
     }
 }

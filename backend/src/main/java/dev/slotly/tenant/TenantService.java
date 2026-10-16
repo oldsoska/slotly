@@ -43,6 +43,11 @@ public class TenantService {
         return tenants.findById(id).orElseThrow(() -> new NotFoundException("Tenant", id));
     }
 
+    @Transactional(readOnly = true)
+    public Tenant getBySlug(String slug) {
+        return tenants.findBySlug(slug).orElseThrow(() -> new NotFoundException("Business", slug));
+    }
+
     /** Working hours are stored in local time; this is the zone they are interpreted in. */
     @Transactional(readOnly = true)
     public ZoneId zone(Long tenantId) {

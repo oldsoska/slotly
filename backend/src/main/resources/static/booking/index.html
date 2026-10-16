@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Онлайн-запись</title>
+  <link rel="stylesheet" href="/booking/booking.css">
+  <script src="/booking/booking.js" defer></script>
+</head>
+<body>
+<main class="page">
+  <header class="header">
+    <p class="eyebrow">Онлайн-запись</p>
+    <h1 id="business-name">Загрузка…</h1>
+  </header>
+
+  <p id="error" class="alert" role="alert" hidden></p>
+
+  <section id="booking-flow" hidden>
+    <fieldset class="step">
+      <legend>1. Услуга</legend>
+      <div id="services" class="options"></div>
+    </fieldset>
+
+    <fieldset class="step">
+      <legend>2. Мастер и дата</legend>
+      <div class="row">
+        <label>Мастер
+          <select id="staff"></select>
+        </label>
+        <label>Дата
+          <input id="date" type="date" required>
+        </label>
+      </div>
+    </fieldset>
+
+    <fieldset class="step">
+      <legend>3. Время</legend>
+      <div id="slots" class="slots"></div>
+      <p id="slots-empty" class="muted" hidden>На эту дату свободного времени нет — попробуйте другой день.</p>
+    </fieldset>
+
+    <form id="client-form" class="step" hidden>
+      <fieldset>
+        <legend>4. Ваши данные</legend>
+        <p id="chosen" class="chosen"></p>
+        <div class="row">
+          <label>Имя
+            <input id="client-name" autocomplete="name" maxlength="200" required>
+          </label>
+          <label>Телефон
+            <input id="client-phone" type="tel" autocomplete="tel" placeholder="+79991234567"
+                   pattern="\+?[0-9]{7,15}" required>
+          </label>
+        </div>
+        <button type="submit" class="primary">Записаться</button>
+      </fieldset>
+    </form>
+  </section>
+
+  <section id="confirmation" class="card" hidden>
+    <h2 id="confirmation-title">Вы записаны</h2>
+    <dl class="details">
+      <dt>Услуга</dt><dd id="c-service"></dd>
+      <dt>Мастер</dt><dd id="c-staff"></dd>
+      <dt>Когда</dt><dd id="c-when"></dd>
+    </dl>
+    <p id="c-hint" class="muted">Сохраните ссылку на эту страницу — по ней можно посмотреть или отменить запись.</p>
+    <div class="actions">
+      <button id="cancel-booking" type="button" class="secondary">Отменить запись</button>
+      <a id="book-again" class="link" href="">Записаться ещё раз</a>
+    </div>
+  </section>
+</main>
+</body>
+</html>

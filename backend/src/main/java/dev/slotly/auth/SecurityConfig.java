@@ -45,6 +45,8 @@ public class SecurityConfig implements WebMvcConfigurer {
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/v1/auth/**", "/error").permitAll()
+                        // Client-facing booking page and its API: no account needed
+                        .requestMatchers("/api/v1/public/**", "/b/**", "/booking/**").permitAll()
                         .requestMatchers("/actuator/health/**", "/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**")
                         .permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/staff/**", "/api/v1/services/**").hasRole(Role.OWNER.name())

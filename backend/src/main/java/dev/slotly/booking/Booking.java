@@ -10,6 +10,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
 import java.time.Instant;
+import java.util.UUID;
 
 @Entity
 @Table(name = "booking")
@@ -43,6 +44,10 @@ public class Booking {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private BookingStatus status = BookingStatus.CONFIRMED;
+
+    /** Secret handed to the client in the confirmation link; lets them view or cancel without an account. */
+    @Column(name = "cancel_token", nullable = false, unique = true, updatable = false)
+    private UUID cancelToken = UUID.randomUUID();
 
     @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
     private Instant createdAt;
@@ -98,6 +103,10 @@ public class Booking {
 
     public Instant getEndsAt() {
         return endsAt;
+    }
+
+    public UUID getCancelToken() {
+        return cancelToken;
     }
 
     public BookingStatus getStatus() {

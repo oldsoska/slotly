@@ -4,6 +4,7 @@ Multi-tenant booking & CRM platform for small service businesses: barbershops, b
 Each business (tenant) manages its staff and services; clients book time slots online.
 
 **Live demo:** https://slotly-minx.onrender.com/swagger-ui.html — sign up via `POST /api/v1/auth/register`, then press **Authorize**.
+After adding a service, a master and working hours, your clients book at `https://slotly-minx.onrender.com/b/<your-slug>`.
 (Free instance: the first request after a quiet period can take up to a minute while it wakes up.)
 
 [![CI](https://github.com/oldsoska/slotly/actions/workflows/ci.yml/badge.svg)](https://github.com/oldsoska/slotly/actions/workflows/ci.yml)
@@ -22,6 +23,9 @@ Each business (tenant) manages its staff and services; clients book time slots o
   GiST index (`Index Scan using booking_no_overlap` in `EXPLAIN`).
 - **Staff schedules** — weekly working hours in the business's local timezone plus one-off time off; bookings
   outside them are rejected.
+- **Public booking page** at `/b/{slug}` — clients pick a service, master and time and book without an account.
+  The confirmation link carries a random `cancel_token` (UUID) that lets the client view or cancel that one
+  booking. The page is plain HTML/JS served by the backend and talks only to `/api/v1/public/**`.
 - **Multi-tenancy** — every row is scoped by `tenant_id`, and the tenant comes from the signed JWT, never from the
   URL or body, so one business cannot address another's data. Cross-tenant access returns 404 (covered by tests).
 - **Stateless JWT auth** on Spring Security's OAuth2 resource server — no hand-written filters. BCrypt passwords,
@@ -41,6 +45,7 @@ flowchart LR
         API --> Schedule[schedule<br/>hours, time off]
         API --> Booking[booking]
         API --> Avail[availability]
+        API --> Store[storefront<br/>public booking]
     end
     Backend --> PG[(PostgreSQL)]
     Booking -.->|events, stage 4| Kafka[[Kafka]]
@@ -117,6 +122,14 @@ curl "localhost:8080/api/v1/availability?serviceId=1&date=2026-12-01" -H "Author
 # book a slot (409 Conflict if it overlaps another booking or falls outside working hours)
 curl -X POST localhost:8080/api/v1/bookings -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
   -d '{"staffId":1,"serviceId":1,"clientName":"Anna","clientPhone":"+79990001122","startsAt":"2026-12-01T07:00:00Z"}'
+
+# what a client sees — no token needed
+curl localhost:8080/api/v1/public/businesses/barber-bros
+curl "localhost:8080/api/v1/public/businesses/barber-bros/availability?serviceId=1&date=2026-12-01"
+curl -X POST localhost:8080/api/v1/public/businesses/barber-bros/bookings -H "Content-Type: application/json" \
+  -d '{"staffId":1,"serviceId":1,"clientName":"Anna","clientPhone":"+79990001122","startsAt":"2026-12-01T08:00:00Z"}'
+# the response holds cancelToken; the client keeps https://.../b/barber-bros?booking=<cancelToken>
+curl -X POST localhost:8080/api/v1/public/bookings/<cancelToken>/cancel
 ```
 
 In Swagger UI press **Authorize** and paste the token to try endpoints from the browser.
@@ -133,3 +146,5 @@ In Swagger UI press **Authorize** and paste the token to try endpoints from the 
 | `TIMESTAMPTZ` + `Instant` everywhere | Stores absolute moments; the tenant's timezone is applied only for display and working hours. |
 | Working hours as local `TIME`, bookings as `TIMESTAMPTZ` | "10:00–19:00" means local time all year round, including across DST changes; it is converted to instants per date with the tenant's zone. |
 | Availability computed in SQL rather than in Java | One round trip per staff member instead of loading every booking into memory; the database already has the index that answers "does this range overlap anything". |
+| Client access by an unguessable token, not an account | Asking clients to register kills conversion. A UUIDv4 has 122 random bits, so the link is the credential; it grants access to one booking only and is never returned by staff endpoints. |
+| Booking page as static HTML/JS for now | Gives a clickable demo today without a frontend build; the React app planned for stage 3 will use the same public API. |
