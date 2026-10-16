@@ -32,6 +32,7 @@ services:
       DB_URL: jdbc:postgresql://postgres:5432/slotly
       DB_USER: slotly
       DB_PASSWORD: slotly
+      JWT_SECRET: ${JWT_SECRET:-local-dev-only-secret-change-me-0123456789}
     ports:
       - "8080:8080"
     depends_on:

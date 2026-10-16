@@ -7,7 +7,6 @@ import dev.slotly.catalog.StaffRepository;
 import dev.slotly.common.ConflictException;
 import dev.slotly.common.Constraints;
 import dev.slotly.common.NotFoundException;
-import dev.slotly.tenant.TenantService;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,14 +17,11 @@ import java.util.List;
 @Service
 public class BookingService {
 
-    private final TenantService tenants;
     private final StaffRepository staff;
     private final ServiceOfferingRepository services;
     private final BookingRepository bookings;
 
-    public BookingService(TenantService tenants, StaffRepository staff,
-                          ServiceOfferingRepository services, BookingRepository bookings) {
-        this.tenants = tenants;
+    public BookingService(StaffRepository staff, ServiceOfferingRepository services, BookingRepository bookings) {
         this.staff = staff;
         this.services = services;
         this.bookings = bookings;
@@ -37,7 +33,6 @@ public class BookingService {
      */
     @Transactional
     public Booking create(Long tenantId, BookingDtos.CreateRequest request) {
-        tenants.requireExists(tenantId);
         Staff master = staff.findByIdAndTenantId(request.staffId(), tenantId)
                 .filter(Staff::isActive)
                 .orElseThrow(() -> new NotFoundException("Staff", request.staffId()));
@@ -61,7 +56,6 @@ public class BookingService {
 
     @Transactional(readOnly = true)
     public List<Booking> list(Long tenantId, Instant from, Instant to) {
-        tenants.requireExists(tenantId);
         return bookings.findInRange(tenantId, from, to);
     }
 

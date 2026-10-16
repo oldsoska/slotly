@@ -1,5 +1,6 @@
 package dev.slotly.booking;
 
+import dev.slotly.auth.CurrentUser;
 import jakarta.validation.Valid;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
@@ -16,7 +17,7 @@ import java.time.Instant;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/v1/tenants/{tenantId}/bookings")
+@RequestMapping("/api/v1/bookings")
 public class BookingController {
 
     private final BookingService service;
@@ -27,22 +28,21 @@ public class BookingController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public BookingDtos.Response create(@PathVariable Long tenantId,
-                                       @Valid @RequestBody BookingDtos.CreateRequest request) {
-        return BookingDtos.Response.from(service.create(tenantId, request));
+    public BookingDtos.Response create(CurrentUser user, @Valid @RequestBody BookingDtos.CreateRequest request) {
+        return BookingDtos.Response.from(service.create(user.tenantId(), request));
     }
 
     @GetMapping
-    public List<BookingDtos.Response> list(@PathVariable Long tenantId,
+    public List<BookingDtos.Response> list(CurrentUser user,
                                            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant from,
                                            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant to) {
-        return service.list(tenantId, from, to).stream()
+        return service.list(user.tenantId(), from, to).stream()
                 .map(BookingDtos.Response::from)
                 .toList();
     }
 
     @PostMapping("/{bookingId}/cancel")
-    public BookingDtos.Response cancel(@PathVariable Long tenantId, @PathVariable Long bookingId) {
-        return BookingDtos.Response.from(service.cancel(tenantId, bookingId));
+    public BookingDtos.Response cancel(CurrentUser user, @PathVariable Long bookingId) {
+        return BookingDtos.Response.from(service.cancel(user.tenantId(), bookingId));
     }
 }

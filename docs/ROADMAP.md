@@ -8,7 +8,7 @@
 - [x] REST API: компании, мастера, услуги, бронирования, отмена
 - [x] Problem Details для ошибок, Swagger UI, Actuator
 - [x] Docker, docker-compose, GitHub Actions
-- [ ] **Spring Security + JWT**: регистрация владельца, роли `OWNER` / `STAFF`, tenant берётся из токена, а не из URL
+- [x] **Spring Security + JWT**: регистрация владельца, роли `OWNER` / `STAFF`, tenant берётся из токена, а не из URL
 - [ ] Расписание мастеров (рабочие часы, выходные) и проверка, что запись попадает в рабочее время
 - [ ] Эндпоинт свободных слотов: `GET /availability?serviceId=&date=`
 - [ ] Пагинация списков

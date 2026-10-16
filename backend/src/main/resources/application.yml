@@ -21,6 +21,13 @@ management:
       exposure:
         include: health,info,metrics
 
+slotly:
+  jwt:
+    # Override with JWT_SECRET outside local development (at least 32 bytes)
+    secret: ${JWT_SECRET:local-dev-only-secret-change-me-0123456789}
+    issuer: slotly
+    ttl: 1h
+
 springdoc:
   swagger-ui:
     path: /swagger-ui.html
