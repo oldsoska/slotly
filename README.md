@@ -11,6 +11,12 @@ Each business (tenant) manages its staff and services; clients book time slots o
   `(staff_id, tstzrange(starts_at, ends_at))` rejects overlapping bookings atomically — no race window between
   "check availability" and "insert". Covered by a test that fires 10 concurrent requests at one slot and
   asserts exactly one wins.
+- **Free slots in one SQL query.** `GET /api/v1/availability` expands the working day into a 15-minute grid with
+  `generate_series` and drops candidates that overlap a booking or time off via `NOT EXISTS`. The booking check
+  reuses the `tstzrange &&` predicate of the exclusion constraint, so PostgreSQL serves it from that constraint's
+  GiST index (`Index Scan using booking_no_overlap` in `EXPLAIN`).
+- **Staff schedules** — weekly working hours in the business's local timezone plus one-off time off; bookings
+  outside them are rejected.
 - **Multi-tenancy** — every row is scoped by `tenant_id`, and the tenant comes from the signed JWT, never from the
   URL or body, so one business cannot address another's data. Cross-tenant access returns 404 (covered by tests).
 - **Stateless JWT auth** on Spring Security's OAuth2 resource server — no hand-written filters. BCrypt passwords,
@@ -27,7 +33,9 @@ flowchart LR
     subgraph Backend [Spring Boot - modular monolith]
         API[REST API] --> Tenant[tenant]
         API --> Catalog[catalog<br/>staff, services]
+        API --> Schedule[schedule<br/>hours, time off]
         API --> Booking[booking]
+        API --> Avail[availability]
     end
     Backend --> PG[(PostgreSQL)]
     Booking -.->|events, stage 4| Kafka[[Kafka]]
@@ -75,9 +83,21 @@ curl -X POST localhost:8080/api/v1/services -H "Authorization: Bearer $TOKEN" -H
 curl -X POST localhost:8080/api/v1/staff/1/account -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" -d '{"email":"ivan@example.com","password":"s3cret-pass"}'
 
-# book a slot (409 Conflict if it overlaps an existing booking)
+# working hours Mon-Fri 10:00-19:00 in the business's timezone; days not listed are days off
+curl -X PUT localhost:8080/api/v1/staff/1/working-hours -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" -d '[
+    {"dayOfWeek":"MONDAY","start":"10:00","end":"19:00"},
+    {"dayOfWeek":"TUESDAY","start":"10:00","end":"19:00"},
+    {"dayOfWeek":"WEDNESDAY","start":"10:00","end":"19:00"},
+    {"dayOfWeek":"THURSDAY","start":"10:00","end":"19:00"},
+    {"dayOfWeek":"FRIDAY","start":"10:00","end":"19:00"}]'
+
+# free start times for the service on a date (optionally &staffId=1)
+curl "localhost:8080/api/v1/availability?serviceId=1&date=2026-12-01" -H "Authorization: Bearer $TOKEN"
+
+# book a slot (409 Conflict if it overlaps another booking or falls outside working hours)
 curl -X POST localhost:8080/api/v1/bookings -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-  -d '{"staffId":1,"serviceId":1,"clientName":"Anna","clientPhone":"+79990001122","startsAt":"2026-12-01T10:00:00Z"}'
+  -d '{"staffId":1,"serviceId":1,"clientName":"Anna","clientPhone":"+79990001122","startsAt":"2026-12-01T07:00:00Z"}'
 ```
 
 In Swagger UI press **Authorize** and paste the token to try endpoints from the browser.
@@ -92,3 +112,5 @@ In Swagger UI press **Authorize** and paste the token to try endpoints from the 
 | HS256 JWT signed with a shared secret | One service issues and verifies tokens, so a symmetric key is enough and keeps setup simple. Moving to RS256 with a JWKS endpoint (or Keycloak) is a config change in `SecurityConfig` once a second service must verify tokens. |
 | Tenant resolved from the token via `CurrentUser` | Controllers cannot forget the check: they never see a tenant id the client chose. |
 | `TIMESTAMPTZ` + `Instant` everywhere | Stores absolute moments; the tenant's timezone is applied only for display and working hours. |
+| Working hours as local `TIME`, bookings as `TIMESTAMPTZ` | "10:00–19:00" means local time all year round, including across DST changes; it is converted to instants per date with the tenant's zone. |
+| Availability computed in SQL rather than in Java | One round trip per staff member instead of loading every booking into memory; the database already has the index that answers "does this range overlap anything". |

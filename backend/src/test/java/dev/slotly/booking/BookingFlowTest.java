@@ -36,7 +36,8 @@ class BookingFlowTest extends ApiTestSupport {
         serviceId = owner.postForObject("/api/v1/services",
                 new CatalogDtos.CreateServiceRequest("Haircut", 45, new BigDecimal("1500.00")),
                 CatalogDtos.ServiceResponse.class).id();
-        slot = Instant.now().plus(1, ChronoUnit.DAYS).truncatedTo(ChronoUnit.HOURS);
+        workEveryDay(owner, staffId, "09:00", "18:00");
+        slot = tomorrowAt("10:00");
     }
 
     @Test

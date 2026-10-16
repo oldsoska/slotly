@@ -48,6 +48,8 @@ public class SecurityConfig implements WebMvcConfigurer {
                         .requestMatchers("/actuator/health/**", "/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**")
                         .permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/staff/**", "/api/v1/services/**").hasRole(Role.OWNER.name())
+                        .requestMatchers(HttpMethod.PUT, "/api/v1/staff/**").hasRole(Role.OWNER.name())
+                        .requestMatchers(HttpMethod.DELETE, "/api/v1/staff/**").hasRole(Role.OWNER.name())
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(rs -> rs.jwt(jwt -> jwt.jwtAuthenticationConverter(authenticationConverter())))
                 .build();

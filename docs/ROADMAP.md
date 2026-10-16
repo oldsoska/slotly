@@ -9,8 +9,8 @@
 - [x] Problem Details для ошибок, Swagger UI, Actuator
 - [x] Docker, docker-compose, GitHub Actions
 - [x] **Spring Security + JWT**: регистрация владельца, роли `OWNER` / `STAFF`, tenant берётся из токена, а не из URL
-- [ ] Расписание мастеров (рабочие часы, выходные) и проверка, что запись попадает в рабочее время
-- [ ] Эндпоинт свободных слотов: `GET /availability?serviceId=&date=`
+- [x] Расписание мастеров (рабочие часы, выходные) и проверка, что запись попадает в рабочее время
+- [x] Эндпоинт свободных слотов: `GET /availability?serviceId=&date=`
 - [ ] Пагинация списков
 
 ## Этап 2: MVP в продакшене (нед. 3–4)

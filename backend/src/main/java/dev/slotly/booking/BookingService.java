@@ -7,6 +7,7 @@ import dev.slotly.catalog.StaffRepository;
 import dev.slotly.common.ConflictException;
 import dev.slotly.common.Constraints;
 import dev.slotly.common.NotFoundException;
+import dev.slotly.schedule.ScheduleService;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,11 +21,14 @@ public class BookingService {
     private final StaffRepository staff;
     private final ServiceOfferingRepository services;
     private final BookingRepository bookings;
+    private final ScheduleService schedule;
 
-    public BookingService(StaffRepository staff, ServiceOfferingRepository services, BookingRepository bookings) {
+    public BookingService(StaffRepository staff, ServiceOfferingRepository services,
+                          BookingRepository bookings, ScheduleService schedule) {
         this.staff = staff;
         this.services = services;
         this.bookings = bookings;
+        this.schedule = schedule;
     }
 
     /**
@@ -42,6 +46,8 @@ public class BookingService {
 
         Instant start = request.startsAt();
         Instant end = start.plus(offering.getDuration());
+        schedule.requireBookable(tenantId, master.getId(), start, end);
+
         var booking = new Booking(tenantId, master.getId(), offering.getId(),
                 request.clientName(), request.clientPhone(), start, end);
         try {

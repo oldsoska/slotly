@@ -1,16 +1,27 @@
 package dev.slotly;
 
 import dev.slotly.auth.AuthDtos;
+import dev.slotly.schedule.ScheduleDtos;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
+import java.time.DayOfWeek;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.util.Arrays;
+import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -21,6 +32,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 public abstract class ApiTestSupport {
 
     protected static final String PASSWORD = "correct-horse-battery";
+    protected static final ZoneId ZONE = ZoneId.of("Europe/Moscow");
 
     @Autowired
     protected TestRestTemplate anonymous;
@@ -56,6 +68,25 @@ public abstract class ApiTestSupport {
         return new TestRestTemplate(builder
                 .rootUri("http://localhost:" + port)
                 .defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken));
+    }
+
+    /** Sets the same working hours for every day of the week. */
+    protected static void workEveryDay(TestRestTemplate owner, Long staffId, String start, String end) {
+        List<ScheduleDtos.WorkingDay> week = Arrays.stream(DayOfWeek.values())
+                .map(day -> new ScheduleDtos.WorkingDay(day, LocalTime.parse(start), LocalTime.parse(end)))
+                .toList();
+        ResponseEntity<String> response = owner.exchange("/api/v1/staff/" + staffId + "/working-hours",
+                HttpMethod.PUT, new HttpEntity<>(week), String.class);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    }
+
+    /** Registered businesses default to this zone, so working hours are interpreted in it. */
+    protected static LocalDate tomorrow() {
+        return LocalDate.now(ZONE).plusDays(1);
+    }
+
+    protected static Instant tomorrowAt(String localTime) {
+        return ZonedDateTime.of(tomorrow(), LocalTime.parse(localTime), ZONE).toInstant();
     }
 
     protected static String uniqueEmail() {

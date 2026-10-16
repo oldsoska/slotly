@@ -94,7 +94,8 @@ class AuthAndAccessTest extends ApiTestSupport {
                 new CatalogDtos.CreateStaffRequest("Ivan"), CatalogDtos.StaffResponse.class).id();
         Long serviceId = shopA.postForObject("/api/v1/services",
                 new CatalogDtos.CreateServiceRequest("Haircut", 45, BigDecimal.TEN), CatalogDtos.ServiceResponse.class).id();
-        Instant slot = Instant.now().plus(2, ChronoUnit.DAYS).truncatedTo(ChronoUnit.HOURS);
+        workEveryDay(shopA, staffId, "09:00", "18:00");
+        Instant slot = tomorrowAt("12:00");
         Long bookingId = shopA.postForObject("/api/v1/bookings",
                 new BookingDtos.CreateRequest(staffId, serviceId, "Anna", "+79990001122", slot),
                 BookingDtos.Response.class).id();
