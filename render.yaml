@@ -1,0 +1,31 @@
+# Render Blueprint: https://render.com/docs/blueprint-spec
+# The database lives on Neon; its connection details are entered once in the Render dashboard.
+services:
+  - type: web
+    name: slotly
+    runtime: docker
+    plan: free
+    region: frankfurt
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    healthCheckPath: /actuator/health
+    # Deploy only after the GitHub Actions checks on the commit have passed
+    autoDeployTrigger: checksPass
+    buildFilter:
+      paths:
+        - backend/**
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      # 512 MB instance: leave room for metaspace and thread stacks next to the heap
+      - key: JAVA_OPTS
+        value: -XX:MaxRAMPercentage=60 -XX:+UseSerialGC -Xss512k -XX:TieredStopAtLevel=1
+      - key: JWT_SECRET
+        generateValue: true
+      # e.g. jdbc:postgresql://ep-xxx.eu-central-1.aws.neon.tech/slotly?sslmode=require
+      - key: DB_URL
+        sync: false
+      - key: DB_USER
+        sync: false
+      - key: DB_PASSWORD
+        sync: false

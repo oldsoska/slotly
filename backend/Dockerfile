@@ -10,5 +10,7 @@ WORKDIR /app
 RUN useradd --system --uid 1001 slotly
 USER slotly
 COPY --from=build /app/target/*.jar app.jar
+# Overridable per environment, e.g. a smaller heap share on a 512 MB instance
+ENV JAVA_OPTS="-XX:MaxRAMPercentage=75"
 EXPOSE 8080
-ENTRYPOINT ["java", "-XX:MaxRAMPercentage=75", "-jar", "app.jar"]
+ENTRYPOINT ["sh", "-c", "exec java $JAVA_OPTS -jar app.jar"]

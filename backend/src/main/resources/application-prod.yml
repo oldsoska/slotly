@@ -1,0 +1,28 @@
+# Activated with SPRING_PROFILES_ACTIVE=prod. Secrets have no defaults here,
+# so the app refuses to start instead of running with development values.
+spring:
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
+    hikari:
+      # Free-tier Postgres allows few connections; a small pool is plenty for this load
+      maximum-pool-size: 5
+      minimum-idle: 1
+
+server:
+  # TLS ends at the platform's proxy; trust X-Forwarded-* so redirects and Swagger use https
+  forward-headers-strategy: framework
+  tomcat:
+    threads:
+      max: 50
+
+management:
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+slotly:
+  jwt:
+    secret: ${JWT_SECRET}
