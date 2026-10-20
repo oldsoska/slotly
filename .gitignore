@@ -6,3 +6,6 @@ dist/
 .vscode/
 .env
 *.log
+
+# Built by the frontend (npm run build)
+backend/src/main/resources/static/app/

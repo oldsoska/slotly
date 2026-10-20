@@ -3,13 +3,13 @@
 Multi-tenant booking & CRM platform for small service businesses: barbershops, beauty salons, tutors, clinics.
 Each business (tenant) manages its staff and services; clients book time slots online.
 
-**Live demo:** https://slotly-minx.onrender.com/swagger-ui.html — sign up via `POST /api/v1/auth/register`, then press **Authorize**.
-After adding a service, a master and working hours, your clients book at `https://slotly-minx.onrender.com/b/<your-slug>`.
+**Live demo:** https://slotly-minx.onrender.com/app/register — sign up a business, add a master, a service and working hours.
+Your clients then book at `https://slotly-minx.onrender.com/b/<your-slug>`; the API is browsable at [/swagger-ui.html](https://slotly-minx.onrender.com/swagger-ui.html).
 (Free instance: the first request after a quiet period can take up to a minute while it wakes up.)
 
 [![CI](https://github.com/oldsoska/slotly/actions/workflows/ci.yml/badge.svg)](https://github.com/oldsoska/slotly/actions/workflows/ci.yml)
 
-> Status: **Stage 2 — deployed MVP.** See [ROADMAP](docs/ROADMAP.md).
+> Status: **Stage 3 — staff dashboard (React).** See [ROADMAP](docs/ROADMAP.md).
 
 ## Highlights
 
@@ -43,7 +43,8 @@ After adding a service, a master and working hours, your clients book at `https:
 
 ```mermaid
 flowchart LR
-    UI[React SPA<br/><i>stage 3</i>] -->|REST| API
+    UI[Dashboard SPA<br/>React + TS, /app] -->|REST + JWT| API
+    Page[Booking page<br/>/b/slug] -->|public REST| API
     subgraph Backend [Spring Boot - modular monolith]
         API[REST API] --> Tenant[tenant]
         API --> Catalog[catalog<br/>staff, services]
@@ -61,7 +62,8 @@ flowchart LR
 ## Tech stack
 
 Java 21 · Spring Boot 3.5 · Spring Security (JWT) · Spring Data JPA · PostgreSQL 16 · Flyway · Testcontainers · Docker · GitHub Actions ·
-OpenAPI (Swagger UI). Planned: Kafka, Redis, React + TypeScript, Prometheus + Grafana.
+OpenAPI (Swagger UI) · Bucket4j.
+Frontend: React 19 · TypeScript · Vite · React Router · TanStack Query · Vitest. Planned: Kafka, Redis, Prometheus + Grafana.
 
 ## Running locally
 
@@ -76,7 +78,19 @@ mvn spring-boot:run
 - Swagger UI: http://localhost:8080/swagger-ui.html
 - Health: http://localhost:8080/actuator/health
 
-Run everything in containers: `docker compose --profile app up --build`.
+Dashboard with hot reload (requires Node 20+), proxied to the backend above:
+
+```bash
+cd frontend
+npm ci
+npm run dev        # http://localhost:5173/app/
+```
+
+`npm run build` writes the SPA into `backend/src/main/resources/static/app`, so the jar then serves it at
+http://localhost:8080/app/. Frontend tests: `npm test`; type check: `npm run typecheck`.
+
+Run everything in containers: `docker compose --profile app up --build` — the root `Dockerfile` builds the SPA
+with Node, packages it into the Spring Boot jar with Maven and runs it on a JRE-only image.
 
 Tests (needs Docker running): `cd backend && mvn verify`.
 
@@ -155,3 +169,6 @@ In Swagger UI press **Authorize** and paste the token to try endpoints from the 
 | Booking page as static HTML/JS for now | Gives a clickable demo today without a frontend build; the React app planned for stage 3 will use the same public API. |
 | Several independent limits instead of one per-IP limit | An IP limit alone is beaten by rotating addresses; the per-business and per-phone limits do not depend on the client's address at all. |
 | In-memory rate-limit buckets | One instance runs today, so memory is the simplest correct store. With more instances the same `RateLimiter` would keep buckets in Redis (Bucket4j has a Redis backend). |
+| Dashboard served by Spring Boot from `/app` | One origin for the SPA and the API: no CORS, cookies or second deployment, and the free Render instance keeps hosting everything. The client-side routes are listed in `SpaController` so a reload of `/app/staff` still returns the app. |
+| JWT in `sessionStorage`, not `localStorage` or a cookie | Survives a reload but not closing the tab, and is not shared across tabs. A cookie would need CSRF protection; an `HttpOnly` cookie plus refresh tokens is the next step if sessions must outlive the tab. |
+| Server state in TanStack Query, no global store | Almost all state is server data; Query gives caching, refetching and invalidation per resource (`queryKeys`), and local UI state stays in components. |

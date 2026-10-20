@@ -47,6 +47,8 @@ public class SecurityConfig implements WebMvcConfigurer {
                         .requestMatchers("/api/v1/auth/**", "/error").permitAll()
                         // Client-facing booking page and its API: no account needed
                         .requestMatchers("/api/v1/public/**", "/b/**", "/booking/**").permitAll()
+                        // Dashboard SPA files; the data it shows still needs a token
+                        .requestMatchers("/app", "/app/**").permitAll()
                         .requestMatchers("/actuator/health/**", "/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**")
                         .permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/staff/**", "/api/v1/services/**").hasRole(Role.OWNER.name())

@@ -6,14 +6,16 @@ services:
     runtime: docker
     plan: free
     region: frankfurt
-    dockerfilePath: ./backend/Dockerfile
-    dockerContext: ./backend
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
     healthCheckPath: /actuator/health
     # Deploy only after the GitHub Actions checks on the commit have passed
     autoDeployTrigger: checksPass
     buildFilter:
       paths:
         - backend/**
+        - frontend/**
+        - Dockerfile
     envVars:
       - key: SPRING_PROFILES_ACTIVE
         value: prod
