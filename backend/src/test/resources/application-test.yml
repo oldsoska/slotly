@@ -1,0 +1,11 @@
+# All test requests come from one address, so limits are raised out of the way here;
+# RateLimitTest lowers them again to exercise them.
+slotly:
+  rate-limit:
+    register-per-ip: { requests: 100000, per: 1m }
+    login-per-ip: { requests: 100000, per: 1m }
+    login-per-email: { requests: 100000, per: 1m }
+    public-read-per-ip: { requests: 100000, per: 1m }
+    public-booking-per-ip: { requests: 100000, per: 1m }
+    public-booking-per-business: { requests: 100000, per: 1m }
+    public-cancel-per-ip: { requests: 100000, per: 1m }

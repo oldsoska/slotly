@@ -11,8 +11,6 @@ spring:
       minimum-idle: 1
 
 server:
-  # TLS ends at the platform's proxy; trust X-Forwarded-* so redirects and Swagger use https
-  forward-headers-strategy: framework
   tomcat:
     threads:
       max: 50

@@ -1,6 +1,10 @@
 server:
   # Render and most PaaS pass the port to listen on in $PORT
   port: ${PORT:8080}
+  # Tomcat's RemoteIpValve: X-Forwarded-For/-Proto are honoured only when the request comes from an
+  # internal-network proxy, and the client address is taken as the right-most untrusted hop, so a
+  # client cannot spoof its IP by prepending entries to X-Forwarded-For.
+  forward-headers-strategy: native
 
 spring:
   application:
@@ -31,6 +35,17 @@ slotly:
     secret: ${JWT_SECRET:local-dev-only-secret-change-me-0123456789}
     issuer: slotly
     ttl: 1h
+  # Abuse protection for unauthenticated endpoints. Buckets live in memory, which is enough for a
+  # single instance; several instances would need a shared store such as Redis.
+  rate-limit:
+    register-per-ip: { requests: 10, per: 1h }
+    login-per-ip: { requests: 20, per: 1m }
+    login-per-email: { requests: 10, per: 15m }
+    public-read-per-ip: { requests: 120, per: 1m }
+    public-booking-per-ip: { requests: 10, per: 10m }
+    public-booking-per-business: { requests: 60, per: 1h }
+    public-cancel-per-ip: { requests: 20, per: 10m }
+    upcoming-bookings-per-phone: 3
 
 springdoc:
   swagger-ui:

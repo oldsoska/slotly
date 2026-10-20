@@ -26,6 +26,11 @@ After adding a service, a master and working hours, your clients book at `https:
 - **Public booking page** at `/b/{slug}` — clients pick a service, master and time and book without an account.
   The confirmation link carries a random `cancel_token` (UUID) that lets the client view or cancel that one
   booking. The page is plain HTML/JS served by the backend and talks only to `/api/v1/public/**`.
+- **Abuse protection on everything public** — token-bucket rate limits (Bucket4j, buckets in a bounded Caffeine
+  cache) per client IP on sign-up, login, booking and cancellation; per email on login; per business on public
+  bookings, so rotating IPs cannot flood one business; and at most 3 upcoming bookings per phone number. Limits
+  answer `429` with `Retry-After`. The client IP comes from Tomcat's `RemoteIpValve`, which reads
+  `X-Forwarded-For` right to left from trusted proxies only, so prepending fake addresses does not help.
 - **Multi-tenancy** — every row is scoped by `tenant_id`, and the tenant comes from the signed JWT, never from the
   URL or body, so one business cannot address another's data. Cross-tenant access returns 404 (covered by tests).
 - **Stateless JWT auth** on Spring Security's OAuth2 resource server — no hand-written filters. BCrypt passwords,
@@ -148,3 +153,5 @@ In Swagger UI press **Authorize** and paste the token to try endpoints from the 
 | Availability computed in SQL rather than in Java | One round trip per staff member instead of loading every booking into memory; the database already has the index that answers "does this range overlap anything". |
 | Client access by an unguessable token, not an account | Asking clients to register kills conversion. A UUIDv4 has 122 random bits, so the link is the credential; it grants access to one booking only and is never returned by staff endpoints. |
 | Booking page as static HTML/JS for now | Gives a clickable demo today without a frontend build; the React app planned for stage 3 will use the same public API. |
+| Several independent limits instead of one per-IP limit | An IP limit alone is beaten by rotating addresses; the per-business and per-phone limits do not depend on the client's address at all. |
+| In-memory rate-limit buckets | One instance runs today, so memory is the simplest correct store. With more instances the same `RateLimiter` would keep buckets in Redis (Bucket4j has a Redis backend). |

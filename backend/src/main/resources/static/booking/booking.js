@@ -20,6 +20,10 @@ async function request(path, options = {}) {
     ...options,
   });
   const body = response.status === 204 ? null : await response.json().catch(() => null);
+  if (response.status === 429) {
+    const seconds = Number(response.headers.get('Retry-After')) || 60;
+    throw new Error('Слишком много попыток. Попробуйте снова через ' + Math.ceil(seconds / 60) + ' мин.');
+  }
   if (!response.ok) {
     throw new Error((body && body.detail) || 'Не удалось выполнить запрос (' + response.status + ')');
   }

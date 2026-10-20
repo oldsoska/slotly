@@ -5,6 +5,8 @@ import dev.slotly.common.ConflictException;
 import dev.slotly.common.Constraints;
 import dev.slotly.common.NotFoundException;
 import dev.slotly.common.UnauthorizedException;
+import dev.slotly.ratelimit.RateLimitProperties;
+import dev.slotly.ratelimit.RateLimiter;
 import dev.slotly.tenant.Tenant;
 import dev.slotly.tenant.TenantService;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -24,21 +26,27 @@ public class AuthService {
     private final TenantService tenants;
     private final PasswordEncoder passwordEncoder;
     private final TokenService tokens;
+    private final RateLimiter rateLimiter;
+    private final RateLimitProperties limits;
     /** Compared against when the email is unknown, so both failure paths take the same time. */
     private final String dummyHash;
 
     public AuthService(AppUserRepository users, StaffRepository staff, TenantService tenants,
-                       PasswordEncoder passwordEncoder, TokenService tokens) {
+                       PasswordEncoder passwordEncoder, TokenService tokens,
+                       RateLimiter rateLimiter, RateLimitProperties limits) {
         this.users = users;
         this.staff = staff;
         this.tenants = tenants;
         this.passwordEncoder = passwordEncoder;
         this.tokens = tokens;
+        this.rateLimiter = rateLimiter;
+        this.limits = limits;
         this.dummyHash = passwordEncoder.encode("timing-equaliser");
     }
 
     @Transactional
-    public AuthDtos.TokenResponse register(AuthDtos.RegisterRequest request) {
+    public AuthDtos.TokenResponse register(AuthDtos.RegisterRequest request, String clientIp) {
+        rateLimiter.consume("register-ip:" + clientIp, limits.registerPerIp());
         String email = normalize(request.email());
         requireEmailFree(email);
         Tenant tenant = tenants.create(request.businessName(), request.slug(), request.timezone());
@@ -46,9 +54,16 @@ public class AuthService {
         return tokens.issue(owner);
     }
 
+    /**
+     * Limited per client IP (one machine guessing many accounts) and per email (many machines guessing
+     * one account). Checked before BCrypt, so rejected attempts cost no hashing.
+     */
     @Transactional(readOnly = true)
-    public AuthDtos.TokenResponse login(AuthDtos.LoginRequest request) {
-        AppUser user = users.findByEmail(normalize(request.email())).orElse(null);
+    public AuthDtos.TokenResponse login(AuthDtos.LoginRequest request, String clientIp) {
+        String email = normalize(request.email());
+        rateLimiter.consume("login-ip:" + clientIp, limits.loginPerIp());
+        rateLimiter.consume("login-email:" + email, limits.loginPerEmail());
+        AppUser user = users.findByEmail(email).orElse(null);
         String hash = user != null ? user.getPasswordHash() : dummyHash;
         if (!passwordEncoder.matches(request.password(), hash) || user == null) {
             throw new UnauthorizedException(BAD_CREDENTIALS);

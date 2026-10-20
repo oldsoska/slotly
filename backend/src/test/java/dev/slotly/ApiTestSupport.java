@@ -13,6 +13,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.test.context.ActiveProfiles;
 
 import java.time.DayOfWeek;
 import java.time.Instant;
@@ -29,6 +30,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 /** Boots the app on a random port against Testcontainers PostgreSQL and offers authenticated clients. */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Import(TestcontainersConfig.class)
+@ActiveProfiles("test")
 public abstract class ApiTestSupport {
 
     protected static final String PASSWORD = "correct-horse-battery";

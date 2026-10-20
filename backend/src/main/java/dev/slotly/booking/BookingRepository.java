@@ -14,6 +14,9 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
 
     Optional<Booking> findByCancelToken(UUID cancelToken);
 
+    long countByTenantIdAndClientPhoneAndStatusAndStartsAtAfter(Long tenantId, String clientPhone,
+                                                               BookingStatus status, Instant after);
+
     @Query("""
             select b from Booking b
             where b.tenantId = :tenantId

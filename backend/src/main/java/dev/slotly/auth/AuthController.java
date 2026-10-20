@@ -1,5 +1,6 @@
 package dev.slotly.auth;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -22,13 +23,14 @@ public class AuthController {
 
     @PostMapping("/auth/register")
     @ResponseStatus(HttpStatus.CREATED)
-    public AuthDtos.TokenResponse register(@Valid @RequestBody AuthDtos.RegisterRequest request) {
-        return service.register(request);
+    public AuthDtos.TokenResponse register(@Valid @RequestBody AuthDtos.RegisterRequest request,
+                                           HttpServletRequest http) {
+        return service.register(request, http.getRemoteAddr());
     }
 
     @PostMapping("/auth/login")
-    public AuthDtos.TokenResponse login(@Valid @RequestBody AuthDtos.LoginRequest request) {
-        return service.login(request);
+    public AuthDtos.TokenResponse login(@Valid @RequestBody AuthDtos.LoginRequest request, HttpServletRequest http) {
+        return service.login(request, http.getRemoteAddr());
     }
 
     @GetMapping("/me")

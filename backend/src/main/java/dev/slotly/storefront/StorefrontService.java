@@ -4,16 +4,22 @@ import dev.slotly.availability.AvailabilityDtos;
 import dev.slotly.availability.AvailabilityService;
 import dev.slotly.booking.Booking;
 import dev.slotly.booking.BookingDtos;
+import dev.slotly.booking.BookingRepository;
 import dev.slotly.booking.BookingService;
+import dev.slotly.booking.BookingStatus;
 import dev.slotly.catalog.ServiceOffering;
 import dev.slotly.catalog.ServiceOfferingRepository;
 import dev.slotly.catalog.Staff;
 import dev.slotly.catalog.StaffRepository;
+import dev.slotly.common.ConflictException;
+import dev.slotly.ratelimit.RateLimitProperties;
+import dev.slotly.ratelimit.RateLimiter;
 import dev.slotly.tenant.Tenant;
 import dev.slotly.tenant.TenantService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
@@ -21,6 +27,7 @@ import java.util.UUID;
 /**
  * Public, unauthenticated booking flow. The business is resolved from its slug and every call is
  * delegated to the same services staff use, so the schedule and overlap rules apply unchanged.
+ * Being open to anyone, it is also where abuse limits are enforced.
  */
 @Service
 public class StorefrontService {
@@ -30,18 +37,29 @@ public class StorefrontService {
     private final ServiceOfferingRepository services;
     private final AvailabilityService availability;
     private final BookingService bookings;
+    private final BookingRepository bookingRepository;
+    private final RateLimiter rateLimiter;
+    private final RateLimitProperties limits;
+    private final Clock clock;
 
     public StorefrontService(TenantService tenants, StaffRepository staff, ServiceOfferingRepository services,
-                             AvailabilityService availability, BookingService bookings) {
+                             AvailabilityService availability, BookingService bookings,
+                             BookingRepository bookingRepository, RateLimiter rateLimiter,
+                             RateLimitProperties limits, Clock clock) {
         this.tenants = tenants;
         this.staff = staff;
         this.services = services;
         this.availability = availability;
         this.bookings = bookings;
+        this.bookingRepository = bookingRepository;
+        this.rateLimiter = rateLimiter;
+        this.limits = limits;
+        this.clock = clock;
     }
 
     @Transactional(readOnly = true)
-    public StorefrontDtos.Business business(String slug) {
+    public StorefrontDtos.Business business(String slug, String clientIp) {
+        rateLimiter.consume("public-read:" + clientIp, limits.publicReadPerIp());
         Tenant tenant = tenants.getBySlug(slug);
         List<StorefrontDtos.Service> offered = services.findByTenantIdOrderByName(tenant.getId()).stream()
                 .filter(ServiceOffering::isActive)
@@ -55,24 +73,39 @@ public class StorefrontService {
     }
 
     @Transactional(readOnly = true)
-    public List<AvailabilityDtos.Slot> freeSlots(String slug, Long serviceId, LocalDate date, Long staffId) {
+    public List<AvailabilityDtos.Slot> freeSlots(String slug, Long serviceId, LocalDate date, Long staffId,
+                                                 String clientIp) {
+        rateLimiter.consume("public-read:" + clientIp, limits.publicReadPerIp());
         return availability.freeSlots(tenants.getBySlug(slug).getId(), serviceId, date, staffId);
     }
 
+    /**
+     * Three independent checks: per IP (one client flooding), per business (many IPs flooding one
+     * business, which IP limits alone cannot stop) and per phone number (one person holding many slots).
+     */
     @Transactional
-    public StorefrontDtos.Confirmation book(String slug, BookingDtos.CreateRequest request) {
+    public StorefrontDtos.Confirmation book(String slug, BookingDtos.CreateRequest request, String clientIp) {
+        rateLimiter.consume("public-booking-ip:" + clientIp, limits.publicBookingPerIp());
         Tenant tenant = tenants.getBySlug(slug);
+        rateLimiter.consume("public-booking-business:" + tenant.getId(), limits.publicBookingPerBusiness());
+        long upcoming = bookingRepository.countByTenantIdAndClientPhoneAndStatusAndStartsAtAfter(
+                tenant.getId(), request.clientPhone(), BookingStatus.CONFIRMED, clock.instant());
+        if (upcoming >= limits.upcomingBookingsPerPhone()) {
+            throw new ConflictException("This phone number already has " + upcoming + " upcoming bookings");
+        }
         return confirmation(tenant, bookings.create(tenant.getId(), request));
     }
 
     @Transactional(readOnly = true)
-    public StorefrontDtos.Confirmation booking(UUID token) {
+    public StorefrontDtos.Confirmation booking(UUID token, String clientIp) {
+        rateLimiter.consume("public-read:" + clientIp, limits.publicReadPerIp());
         Booking booking = bookings.byCancelToken(token);
         return confirmation(tenants.get(booking.getTenantId()), booking);
     }
 
     @Transactional
-    public StorefrontDtos.Confirmation cancel(UUID token) {
+    public StorefrontDtos.Confirmation cancel(UUID token, String clientIp) {
+        rateLimiter.consume("public-cancel-ip:" + clientIp, limits.publicCancelPerIp());
         Booking booking = bookings.cancelByToken(token);
         return confirmation(tenants.get(booking.getTenantId()), booking);
     }

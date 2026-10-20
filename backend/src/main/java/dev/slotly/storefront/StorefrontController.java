@@ -3,6 +3,7 @@ package dev.slotly.storefront;
 import dev.slotly.availability.AvailabilityDtos;
 import dev.slotly.booking.BookingDtos;
 import io.swagger.v3.oas.annotations.security.SecurityRequirements;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
@@ -32,32 +33,34 @@ public class StorefrontController {
     }
 
     @GetMapping("/businesses/{slug}")
-    public StorefrontDtos.Business business(@PathVariable String slug) {
-        return service.business(slug);
+    public StorefrontDtos.Business business(@PathVariable String slug, HttpServletRequest http) {
+        return service.business(slug, http.getRemoteAddr());
     }
 
     @GetMapping("/businesses/{slug}/availability")
     public List<AvailabilityDtos.Slot> freeSlots(@PathVariable String slug,
                                                  @RequestParam Long serviceId,
                                                  @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
-                                                 @RequestParam(required = false) Long staffId) {
-        return service.freeSlots(slug, serviceId, date, staffId);
+                                                 @RequestParam(required = false) Long staffId,
+                                                 HttpServletRequest http) {
+        return service.freeSlots(slug, serviceId, date, staffId, http.getRemoteAddr());
     }
 
     @PostMapping("/businesses/{slug}/bookings")
     @ResponseStatus(HttpStatus.CREATED)
     public StorefrontDtos.Confirmation book(@PathVariable String slug,
-                                            @Valid @RequestBody BookingDtos.CreateRequest request) {
-        return service.book(slug, request);
+                                            @Valid @RequestBody BookingDtos.CreateRequest request,
+                                            HttpServletRequest http) {
+        return service.book(slug, request, http.getRemoteAddr());
     }
 
     @GetMapping("/bookings/{token}")
-    public StorefrontDtos.Confirmation booking(@PathVariable UUID token) {
-        return service.booking(token);
+    public StorefrontDtos.Confirmation booking(@PathVariable UUID token, HttpServletRequest http) {
+        return service.booking(token, http.getRemoteAddr());
     }
 
     @PostMapping("/bookings/{token}/cancel")
-    public StorefrontDtos.Confirmation cancel(@PathVariable UUID token) {
-        return service.cancel(token);
+    public StorefrontDtos.Confirmation cancel(@PathVariable UUID token, HttpServletRequest http) {
+        return service.cancel(token, http.getRemoteAddr());
     }
 }
